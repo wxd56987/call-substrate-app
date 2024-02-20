@@ -1,94 +1,117 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import { ApiPromise, WsProvider } from "@polkadot/api";
+
 import styles from "./page.module.css";
 
 export default function Home() {
+  const [hi, setHi] = useState("");
+  const [greet, setGreet] = useState("");
+  const [chainInfo, setChainInfo] = useState<string>("");
+  const [sender, setSender] = useState<string>("");
+
   return (
     <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
+      <div>
+        <div style={{ marginBottom: 10 }}>wasm back value: {greet}</div>
+        <div style={{ marginBottom: 10 }}>
+          <input
+            value={hi}
+            onChange={(e) => {
+              setHi(e.target.value);
+            }}
+          />
         </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
-        />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={async () => {
+            const wasm = await import("@kmy_w/rust-wasm-example");
+            await wasm.default();
+            const str = wasm.greet(hi);
+            setGreet(str);
+          }}
         >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+          call wasm
+        </button>
+        <div style={{ marginTop: 10, marginBottom: 10 }}>
+          ---------------------------
+        </div>
+        <div style={{ marginBottom: 10 }}>polkadt address: {sender}</div>
+        <div style={{ marginBottom: 10 }}>polkadt chain value: {chainInfo}</div>
+        <button
+          onClick={async () => {
+            const { web3Enable, web3Accounts } = await import(
+              "@polkadot/extension-dapp"
+            );
+            const extensions = await web3Enable("call-substrate-app");
+            if (extensions.length === 0) {
+              console.log("No extension found");
+              return;
+            }
+            const allAccounts = await web3Accounts();
+            setSender(allAccounts[0].address);
+          }}
         >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+          connect wallet
+        </button>
+        <br />
+        <br />
+        <button
+          onClick={async () => {
+            const wsProvider = new WsProvider("ws://127.0.0.1:9944");
+            const api = await ApiPromise.create({
+              provider: wsProvider,
+            });
+            const number = await api.query.collectibles.number();
+            setChainInfo(number.toString());
+          }}
         >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
+          get number
+        </button>
+        <br />
+        <br />
+        <button
+          onClick={async () => {
+            const wsProvider = new WsProvider("ws://127.0.0.1:9944");
+            const api = await ApiPromise.create({ provider: wsProvider });
 
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+            const { web3FromAddress, web3Enable } = await import(
+              "@polkadot/extension-dapp"
+            );
+            await web3Enable("call-substrate-app");
+            const injector = await web3FromAddress(sender);
+            await api.tx.collectibles
+              .incrementNumber(1)
+              .signAndSend(sender, { signer: injector.signer })
+              .then((v) => {
+                alert("Success increment number!");
+              });
+          }}
         >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
+          add number
+        </button>
+        <br />
+        <br />
+        <button
+          onClick={async () => {
+            const wsProvider = new WsProvider("ws://127.0.0.1:9944");
+            const api = await ApiPromise.create({ provider: wsProvider });
+
+            const { web3FromAddress, web3Enable } = await import(
+              "@polkadot/extension-dapp"
+            );
+            await web3Enable("call-substrate-app");
+            const injector = await web3FromAddress(sender);
+            await api.tx.collectibles
+              .decrementNumber()
+              .signAndSend(sender, { signer: injector.signer })
+              .then((v) => {
+                alert("Success decrement number!");
+              });
+          }}
+        >
+          sub number
+        </button>
       </div>
     </main>
   );
